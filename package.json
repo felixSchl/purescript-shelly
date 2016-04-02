@@ -1,0 +1,27 @@
+{
+  "name": "purescript-shelly",
+  "version": "0.0.0",
+  "description": "Purescript shell scripting",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "pulp test",
+    "watch": "pulp -w test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/felixschl/purescript-shelly.git"
+  },
+  "author": "Felix Schlitter <felixschlitter@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/felixschl/purescript-shelly/issues"
+  },
+  "homepage": "https://github.com/felixschl/purescript-shelly#readme",
+  "devDependencies": {
+    "pulp": "^8.1.1",
+    "purescript": "^0.8.3"
+  }
+}
