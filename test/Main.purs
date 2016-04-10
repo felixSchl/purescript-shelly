@@ -6,8 +6,11 @@ import Control.Monad.Eff
 import Control.Monad.Eff.Console
 import Control.Bind
 import Shelly
+import Node.FS (FS)
+import Node.Process (PROCESS)
+import Control.Monad.Eff.Exception (EXCEPTION)
 
 main = do
-  shelly do
+  launchShelly do
     cd "test"
-    traceShowA =<< pwd
+    cd "Main.purs"
