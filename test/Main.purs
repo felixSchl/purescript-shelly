@@ -13,4 +13,4 @@ import Control.Monad.Eff.Exception (EXCEPTION)
 main = do
   launchShelly do
     cd "test"
-    cd "Main.purs"
+    run "seq" []

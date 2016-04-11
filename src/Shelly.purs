@@ -25,6 +25,8 @@ import Unsafe.Coerce
 import Data.StrMap (StrMap())
 import Control.Monad.Eff.Exception (Error(), EXCEPTION, throwException, error)
 import Control.Monad.Error.Class (throwError, catchJust)
+import Node.ChildProcess as ChildProcess
+import Node.ChildProcess (CHILD_PROCESS)
 
 foreign import code :: Error -> String
 
@@ -76,3 +78,10 @@ cd fp = do
             $ "Cannot change directory."
               ++ " The directory does not exist: " ++ show dir)
   modify \st -> st { cwd = dir }
+
+run :: forall e. String -> Array String -> Sh (cp :: CHILD_PROCESS | e) Unit
+run cmd args = do
+  lift do
+    liftEff do
+      ChildProcess.spawn cmd args ChildProcess.defaultSpawnOptions
+  pure unit
