@@ -2,6 +2,8 @@ module Shelly where
 
 import Prelude
 import Debug.Trace
+import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..))
 import Control.Monad (when, unless)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Unsafe (unsafeInterleaveEff)
@@ -26,6 +28,7 @@ import Data.StrMap (StrMap())
 import Control.Monad.Eff.Exception (Error(), EXCEPTION, throwException, error)
 import Control.Monad.Error.Class (throwError, catchJust)
 import Node.ChildProcess as ChildProcess
+import Node.ChildProcess as Exit
 import Node.ChildProcess (CHILD_PROCESS)
 
 foreign import code :: Error -> String
@@ -80,8 +83,13 @@ cd fp = do
   modify \st -> st { cwd = dir }
 
 run :: forall e. String -> Array String -> Sh (cp :: CHILD_PROCESS | e) Unit
-run cmd args = do
-  lift do
-    liftEff do
+run cmd args = lift do
+  makeAff \reject resolve -> do
+
+    proc <- liftEff do
       ChildProcess.spawn cmd args ChildProcess.defaultSpawnOptions
-  pure unit
+
+    ChildProcess.onExit proc \exit -> case exit of
+      Exit.Normally 0 -> resolve unit
+      Exit.Normally i -> reject $ error $ "Process exited with code: " ++ show i
+      Exit.BySignal s -> reject $ error $ "Process received signal: "  ++ show s
