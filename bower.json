@@ -21,6 +21,8 @@
     "purescript-aff": "~0.16.1",
     "purescript-node-fs-aff": "~0.6.0",
     "purescript-control": "~0.3.2",
-    "purescript-node-child-process": "~0.6.1"
+    "purescript-node-child-process": "~0.6.1",
+    "purescript-words-lines": "~0.0.2",
+    "purescript-node-readline": "~0.5.0"
   }
 }
