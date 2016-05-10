@@ -4,6 +4,7 @@ import Prelude
 import Debug.Trace
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
+import Data.Either (Either(..))
 import Control.Monad (when, unless)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Unsafe (unsafeInterleaveEff)
@@ -39,6 +40,8 @@ import Node.ReadLine as ReadLine
 import Node.ReadLine (READLINE)
 import Node.Encoding (Encoding(..))
 import Data.Monoid (mempty)
+import Control.Coroutine.Aff (produce)
+import Control.Coroutine (Producer(), producer, emit)
 
 foreign import code :: Error -> String
 
@@ -97,23 +100,27 @@ run :: forall e
     -> Sh ( cp       :: CHILD_PROCESS
           , avar     :: AVAR
           , readline :: READLINE
-          | e) Unit
-run cmd args = lift do
-  avar <- AVar.makeVar' []
-  makeAff \reject resolve -> do
+          | e) (Producer String (Aff _) Unit)
+run cmd args = produce \emit -> launchAff do
+  liftEff $ emit (Left "FOO")
 
-    proc <- liftEff do
-      ChildProcess.spawn cmd args ChildProcess.defaultSpawnOptions
+  -- avar <- AVar.makeVar' []
+  -- makeAff \reject resolve -> do
 
+    -- proc <- liftEff do
+      -- ChildProcess.spawn cmd args ChildProcess.defaultSpawnOptions
 
-    liftEff do
-      iface <- ReadLine.createInterface (ChildProcess.stdout proc)
-                                        mempty
+    -- return do
+      -- emit $ pure "FOO"
 
-      ReadLine.setLineHandler iface \line -> do
-        traceA line
-
-    ChildProcess.onExit proc \exit -> case exit of
-      Exit.Normally 0 -> resolve unit
-      Exit.Normally i -> reject $ error $ "Process exited with code: " ++ show i
-      Exit.BySignal s -> reject $ error $ "Process received signal: "  ++ show s
+    -- liftEff do
+    --   iface <- ReadLine.createInterface (ChildProcess.stdout proc)
+    --                                     mempty
+    --
+    --   ReadLine.setLineHandler iface \line -> do
+    --     traceA line
+    --
+    -- ChildProcess.onExit proc \exit -> case exit of
+    --   Exit.Normally 0 -> resolve unit
+    --   Exit.Normally i -> reject $ error $ "Process exited with code: " ++ show i
+    --   Exit.BySignal s -> reject $ error $ "Process received signal: "  ++ show s
