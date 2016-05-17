@@ -5,6 +5,9 @@ import Debug.Trace
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Data.Either (Either(..))
+import Control.Alt (class Alt, (<|>))
+import Control.Alternative (class Alternative)
+import Control.Plus (class Plus, empty)
 import Control.Monad (when, unless)
 import Control.Monad.Eff (Eff())
 import Control.Monad.Eff.Unsafe (unsafeInterleaveEff)
@@ -13,12 +16,12 @@ import Control.Bind ((>=>), (=<<))
 import Control.Monad.Aff
 import Control.Monad.Aff.AVar as AVar
 import Control.Monad.Aff.AVar (AVAR)
-import Control.MonadPlus (guard)
+import Control.MonadPlus (class MonadPlus, guard)
 import Control.Monad.Aff.Class (liftAff)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Class (liftEff, class MonadEff)
 import Control.Monad.State.Trans (StateT(), evalStateT, modify, get)
 import Control.Monad.State.Trans as State
-import Control.Monad.Trans (lift)
+import Control.Monad.Trans (class MonadTrans, lift)
 import Node.Path as Path
 import Node.Path (FilePath)
 import Node.Process as Process
@@ -40,14 +43,49 @@ import Node.ReadLine as ReadLine
 import Node.ReadLine (READLINE)
 import Node.Encoding (Encoding(..))
 import Data.Monoid (mempty)
-import Control.Coroutine.Aff (produce)
-import Control.Coroutine (Producer(), producer, emit)
+import Pipes
+import Pipes.Core
+import Pipes.Prelude hiding (show)
 
 foreign import code :: Error -> String
 
 type Env = StrMap String
 type State = { cwd :: String, env :: Env }
-type Sh e a = StateT State (Aff e) a
+type Sh e = StateT State (Aff e)
+
+newtype Shx e a = Shx (StateT State (Aff e) a)
+
+runShx :: forall e a. Shx e a -> StateT State (Aff e) a
+runShx (Shx x) = x
+
+instance functorShx :: Functor (Shx e) where
+  map f (Shx s) = Shx $ f <$> s
+
+instance applyShx :: Apply (Shx e) where
+  apply (Shx f) (Shx s) = Shx $ f `apply` s
+
+instance applicativeShx :: Applicative (Shx e) where
+  pure = Shx <<< pure
+
+instance altShx :: Alt (Shx e) where
+  alt (Shx x) (Shx y) = Shx $ x <|> y
+
+instance plusShx :: Plus (Shx e) where
+  empty = Shx empty
+
+instance alternativeShx :: Alternative (Shx e)
+
+instance bindShx :: Bind (Shx e) where
+  bind (Shx x) f = Shx do
+    v <- x
+    runShx (f v)
+
+instance monadShx :: Monad (Shx e)
+
+instance monadPlusShx :: MonadPlus (Shx e)
+
+instance monadEffShx :: MonadEff (Shx) where
+  liftEff = liftEff <<< lift
 
 -- | Evaluate the shelly action
 shelly :: forall e a
@@ -94,33 +132,47 @@ cd fp = do
               ++ " The directory does not exist: " ++ show dir)
   modify \st -> st { cwd = dir }
 
-run :: forall e
-     . String
-    -> Array String
-    -> Sh ( cp       :: CHILD_PROCESS
-          , avar     :: AVAR
-          , readline :: READLINE
-          | e) (Producer String (Aff _) Unit)
-run cmd args = produce \emit -> launchAff do
-  liftEff $ emit (Left "FOO")
+-- run f e = do
+--   v <- makeVar
+--   (Right p) <- liftEff' do
+--     proc <- ChildProcess.spawn "seq" ["1000000000"] ChildProcess.defaultSpawnOptions
+--     iface <- ReadLine.createInterface (ChildProcess.stdout proc) mempty
+--     ReadLine.setLineHandler iface \line -> do
+--       launchAff $ putVar v line
+--     return proc
+--
+--   runEffect (f (go v) $ e)
+--
+--   liftEff' do
+--     ChildProcess.kill SIGKILL p
+--
+--   where
+--     go v = do
+--       x <- lift $ takeVar v
+--       yield x
+--       go v
+--
+--
+-- main = do
+--   launchAff do
+--     run (\p -> p >-> (take 8000)) (\s -> do
+--       lift $ log (show s)
+--       return unit
+--     )
+--
+--     log "kill it"
 
-  -- avar <- AVar.makeVar' []
-  -- makeAff \reject resolve -> do
 
-    -- proc <- liftEff do
-      -- ChildProcess.spawn cmd args ChildProcess.defaultSpawnOptions
-
-    -- return do
-      -- emit $ pure "FOO"
-
-    -- liftEff do
-    --   iface <- ReadLine.createInterface (ChildProcess.stdout proc)
-    --                                     mempty
-    --
-    --   ReadLine.setLineHandler iface \line -> do
-    --     traceA line
-    --
-    -- ChildProcess.onExit proc \exit -> case exit of
-    --   Exit.Normally 0 -> resolve unit
-    --   Exit.Normally i -> reject $ error $ "Process exited with code: " ++ show i
-    --   Exit.BySignal s -> reject $ error $ "Process received signal: "  ++ show s
+run
+  :: forall e
+   . String
+  -> Array String
+  -> Sh _ Int
+  -- -> Producer String (Sh ( cp       :: CHILD_PROCESS
+  --                        , avar     :: AVAR
+  --                        , readline :: READLINE
+  --                        | e)) Int
+run cmd args = do
+  -- liftEff do
+    -- return unit
+  return 1
